@@ -1,6 +1,7 @@
 import firebase_admin
 from firebase_admin import credentials, db
 import os
+import json
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -13,8 +14,21 @@ class FirebaseService:
             # For service account key file
             service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY_PATH")
             database_url = os.getenv("FIREBASE_DATABASE_URL")
+            service_account_key = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
             
-            if service_account_path and os.path.exists(service_account_path):
+            if service_account_key:
+                # For deployment - service account key as JSON string
+                try:
+                    service_account_info = json.loads(service_account_key)
+                    cred = credentials.Certificate(service_account_info)
+                    firebase_admin.initialize_app(cred, {
+                        'databaseURL': database_url
+                    })
+                except json.JSONDecodeError:
+                    print("Error: Invalid JSON in FIREBASE_SERVICE_ACCOUNT_KEY")
+                    raise
+            elif service_account_path and os.path.exists(service_account_path):
+                # For local development - service account key file
                 cred = credentials.Certificate(service_account_path)
                 firebase_admin.initialize_app(cred, {
                     'databaseURL': database_url
