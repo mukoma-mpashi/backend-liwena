@@ -1,0 +1,62 @@
+{
+  "cattle": {
+    "cattle1": {
+      "id": "cattle1",
+      "type": "Dairy Cow",
+      "status": "Grazing",
+      "location": "North Field",
+      "lastMovement": "2025-07-04T10:00:00Z",
+      "position": {
+        "x": 45.0,
+        "y": 60.0
+      }
+    },
+    "cattle2": {
+      "id": "cattle2",
+      "type": "Beef Cattle",
+      "status": "Resting",
+      "location": "Barn",
+      "lastMovement": "2025-07-04T09:55:00Z",
+      "position": {
+        "x": 30.0,
+        "y": 80.0
+      }
+    },
+    "cattle3": {
+      "id": "cattle3",
+      "type": "Dairy Cow",
+      "status": "Alert",
+      "location": "North Field",
+      "lastMovement": "2025-07-04T09:50:00Z",
+      "position": {
+        "x": 60.0,
+        "y": 40.0
+      }
+    }
+  },
+  "staff": {
+    "staff1": {
+      "id": "staff1",
+      "name": "Jane Doe",
+      "role": "Veterinarian",
+      "status": "Online",
+      "location": "Barn"
+    },
+    "staff2": {
+      "id": "staff2",
+      "name": "John Smith",
+      "role": "Farmhand",
+      "status": "Offline",
+      "location": "North Field"
+    }
+  },
+  "alerts": {
+    "alert1": {
+      "id": "alert1",
+      "cattleId": "cattle3",
+      "type": "Health",
+      "message": "High temperature detected",
+      "timestamp": "2025-07-04T09:50:00Z"
+    }
+  }
+}
