@@ -385,6 +385,54 @@ async def delete_realtime_data(path: str):
 async def health_check():
     return {"status": "healthy", "service": "Cattle Monitor API", "version": "1.0.0"}
 
+# Debug endpoint for production troubleshooting
+@app.get("/debug/firebase")
+async def debug_firebase():
+    """Debug Firebase connection and environment variables"""
+    import os
+    
+    debug_info = {
+        "timestamp": datetime.now().isoformat(),
+        "environment_variables": {
+            "FIREBASE_DATABASE_URL": os.getenv("FIREBASE_DATABASE_URL") is not None,
+            "FIREBASE_SERVICE_ACCOUNT_KEY": os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY") is not None,
+            "FIREBASE_SERVICE_ACCOUNT_KEY_PATH": os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY_PATH") is not None
+        },
+        "firebase_status": "checking..."
+    }
+    
+    try:
+        # Test Firebase connection
+        test_result = firebase_service.get_realtime_data("test")
+        debug_info["firebase_status"] = "connected"
+        debug_info["firebase_test"] = test_result
+    except Exception as e:
+        debug_info["firebase_status"] = "error"
+        debug_info["firebase_error"] = str(e)
+    
+    return debug_info
+
+# Debug endpoint for checking data structure
+@app.get("/debug/data")
+async def debug_data():
+    """Debug data structure in Firebase"""
+    try:
+        # Try to get raw data from Firebase
+        cattle_raw = firebase_service.get_realtime_data("cattle")
+        staff_raw = firebase_service.get_realtime_data("staff")
+        alerts_raw = firebase_service.get_realtime_data("alerts")
+        
+        return {
+            "cattle_raw": cattle_raw,
+            "staff_raw": staff_raw,
+            "alerts_raw": alerts_raw,
+            "cattle_collection": firebase_service.get_collection("cattle"),
+            "staff_collection": firebase_service.get_collection("staff"),
+            "alerts_collection": firebase_service.get_collection("alerts")
+        }
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

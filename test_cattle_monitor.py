@@ -7,7 +7,7 @@ import requests
 import json
 from datetime import datetime
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "https://cattle-monitoring.onrender.com"
 
 def test_cattle_monitor_api():
     print("🐄 Testing Cattle Monitor API...")
