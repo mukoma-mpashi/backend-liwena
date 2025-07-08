@@ -58,6 +58,23 @@ class AlertBase(BaseModel):
     message: str
     timestamp: str
 
+# Geofence models
+from typing import List
+class Geofence(BaseModel):
+    id: str
+    name: str
+    coordinates: List[List[float]]  # [[lng, lat], ...] polygon
+
+class GeofenceCreate(BaseModel):
+    name: str
+    coordinates: List[List[float]]
+
+# Cattle location update model
+class CattleLocationUpdate(BaseModel):
+    cattle_id: str
+    location: List[float]  # [lng, lat]
+    timestamp: str
+
 class AlertCreate(BaseModel):
     cattleId: str
     type: str

@@ -5,13 +5,15 @@ from firebase_service import firebase_service
 from models import (
     CattleBase, CattleCreate, CattleUpdate, CattleResponse,
     StaffBase, StaffCreate, StaffUpdate, StaffResponse,
-    AlertBase, AlertCreate, AlertUpdate, AlertResponse
+    AlertBase, AlertCreate, AlertUpdate, AlertResponse,
+    Geofence, GeofenceCreate, CattleLocationUpdate
 )
+from shapely.geometry import Point, Polygon
+from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import uuid
-from fastapi.middleware.cors import CORSMiddleware
 
-
+# Single FastAPI app instance
 app = FastAPI(title="Cattle Monitor API", description="FastAPI backend for cattle monitoring system with Firebase integration")
 
 # CORS configuration - update for production
@@ -22,6 +24,67 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# =====================
+# GEOFENCE ENDPOINTS
+# =====================
+
+# Create a geofence
+@app.post("/geofences")
+async def create_geofence(geofence: GeofenceCreate):
+    import uuid
+    geofence_id = f"geofence_{uuid.uuid4().hex[:8]}"
+    data = geofence.model_dump()
+    data["id"] = geofence_id
+    result = firebase_service.create_document("geofences", geofence_id, data)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result.get("error", "Failed to create geofence"))
+    return result
+
+# Get all geofences
+@app.get("/geofences")
+async def get_geofences():
+    result = firebase_service.get_collection("geofences")
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result.get("error", "Failed to get geofences"))
+    return result
+
+# =====================
+# CATTLE LOCATION UPDATE & GEOFENCE CHECK
+# =====================
+
+@app.post("/cattle-location")
+async def update_cattle_location(update: CattleLocationUpdate):
+    # Store the latest location in DB
+    result = firebase_service.create_document("cattle_locations", update.cattle_id, update.model_dump())
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result.get("error", "Failed to update cattle location"))
+
+    # Get all geofences
+    geofences = firebase_service.get_collection("geofences")
+    if not geofences["success"]:
+        raise HTTPException(status_code=400, detail="Failed to fetch geofences")
+
+    point = Point(update.location)
+    inside_any = False
+    for fence in geofences["data"]:
+        poly = Polygon(fence["coordinates"])
+        if poly.contains(point):
+            inside_any = True
+            break
+
+    if not inside_any:
+        # Create geofence alert
+        alert = {
+            "id": f"alert_{uuid.uuid4().hex[:8]}",
+            "cattleId": update.cattle_id,
+            "type": "Geofence",
+            "message": "Cattle left geofence",
+            "timestamp": update.timestamp
+        }
+        firebase_service.create_document("alerts", alert["id"], alert)
+
+    return {"success": True, "inside_geofence": inside_any}
+
 # General models for backward compatibility
 class DocumentData(BaseModel):
     data: Dict[str, Any]

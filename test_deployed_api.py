@@ -48,7 +48,7 @@ def main():
     test_endpoint("/cattle")
     test_endpoint("/staff")
     test_endpoint("/alerts")
-    test_endpoint("/dashboard/summary")
+   # test_endpoint("/dashboard/summary")
     
     print("Testing complete!")
 

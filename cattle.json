@@ -6,10 +6,7 @@
       "status": "Grazing",
       "location": "North Field",
       "lastMovement": "2025-07-04T10:00:00Z",
-      "position": {
-        "x": 45.0,
-        "y": 60.0
-      }
+      "position": { "x": 45.0, "y": 60.0 }
     },
     "cattle2": {
       "id": "cattle2",
@@ -17,10 +14,7 @@
       "status": "Resting",
       "location": "Barn",
       "lastMovement": "2025-07-04T09:55:00Z",
-      "position": {
-        "x": 30.0,
-        "y": 80.0
-      }
+      "position": { "x": 30.0, "y": 80.0 }
     },
     "cattle3": {
       "id": "cattle3",
@@ -28,10 +22,7 @@
       "status": "Alert",
       "location": "North Field",
       "lastMovement": "2025-07-04T09:50:00Z",
-      "position": {
-        "x": 60.0,
-        "y": 40.0
-      }
+      "position": { "x": 60.0, "y": 40.0 }
     }
   },
   "staff": {
@@ -56,6 +47,36 @@
       "cattleId": "cattle3",
       "type": "Health",
       "message": "High temperature detected",
+      "timestamp": "2025-07-04T09:50:00Z"
+    }
+  },
+  "geofences": {
+    "geofence1": {
+      "id": "geofence1",
+      "name": "North Field Boundary",
+      "coordinates": [
+        [44.0, 59.0],
+        [46.0, 59.0],
+        [46.0, 61.0],
+        [44.0, 61.0],
+        [44.0, 59.0]
+      ]
+    }
+  },
+  "cattle_locations": {
+    "cattle1": {
+      "cattle_id": "cattle1",
+      "location": [45.0, 60.0],
+      "timestamp": "2025-07-04T10:00:00Z"
+    },
+    "cattle2": {
+      "cattle_id": "cattle2",
+      "location": [30.0, 80.0],
+      "timestamp": "2025-07-04T09:55:00Z"
+    },
+    "cattle3": {
+      "cattle_id": "cattle3",
+      "location": [60.0, 40.0],
       "timestamp": "2025-07-04T09:50:00Z"
     }
   }

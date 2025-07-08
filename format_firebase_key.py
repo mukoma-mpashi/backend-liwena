@@ -12,7 +12,7 @@ def format_service_account_key():
     # Check for service account key file
     key_files = [
         "firebase-service-account-key.json",
-        "cattlemonitor-57c45-firebase-adminsdk-fbsvc-f4ee97e0e5.json"
+       
     ]
     
     key_file = None
