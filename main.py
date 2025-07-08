@@ -496,6 +496,14 @@ async def debug_data():
     except Exception as e:
         return {"error": str(e), "type": type(e).__name__}
 
+@app.get("/cattle-locations")
+async def get_all_cattle_locations():
+    """Get all cattle locations"""
+    result = firebase_service.get_collection("cattle_locations")
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result.get("error", "Failed to get cattle locations"))
+    return result
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

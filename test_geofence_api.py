@@ -2,7 +2,7 @@ import requests
 import json
 from datetime import datetime
 
-API_BASE_URL = "http://localhost:8000"  # Change to your deployed URL if needed
+API_BASE_URL = "https://cattle-monitoring.onrender.com"  # Change to your deployed URL if needed
 
 def pretty(resp):
     try:
