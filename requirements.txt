@@ -5,3 +5,4 @@ uvicorn[standard]==0.24.0
 gunicorn==21.2.0
 requests==2.31.0
 shapely==2.0.1
+numpy>=1.21.0
