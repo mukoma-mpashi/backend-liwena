@@ -66,12 +66,12 @@
   "cattle_locations": {
     "cattle1": {
       "cattle_id": "cattle1",
-      "location": [45.0, 60.0],
+      "location": [-12.806145, 28.240485],
       "timestamp": "2025-07-04T10:00:00Z"
     },
     "cattle2": {
       "cattle_id": "cattle2",
-      "location": [30.0, 80.0],
+      "location": [-12.806053, 28.240631],
       "timestamp": "2025-07-04T09:55:00Z"
     },
     "cattle3": {
