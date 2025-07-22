@@ -10,8 +10,7 @@ A comprehensive IoT-based cattle monitoring system that tracks behavior, locatio
 graph TD
     ESP[ESP32 Device] -->|HTTP POST| API[FastAPI Backend]
     API -->|Updates| FB[Firebase Realtime DB]
-    FB -->|Serves| UI[Vue.js Frontend]
-    FB -->|Alerts| Mobile[Mobile Apps]
+    FB -->|Serves Data & Alerts| UI[Vue.js Frontend]
 ```
 
 ### Components
@@ -37,11 +36,11 @@ graph TD
    - Location tracking
    - Alert management
 
-4. **Frontend Applications**
+4. **Frontend Application**
    - Vue.js web dashboard
-   - Mobile app support
    - Real-time monitoring
    - Alert notifications
+   - Interactive mapping
 
 ## 🔍 Features
 
@@ -245,16 +244,7 @@ settings = {
 - Geofence verification
 - Data encryption
 
-## 📱 Mobile Integration
-
-- Real-time notifications
-- Location tracking
-- Behavior alerts
-- Health monitoring
-- Staff management
-- Geofence configuration
-
-## 🚀 Future Enhancements
+##  Future Enhancements
 
 1. **Machine Learning**
    - Behavior prediction
