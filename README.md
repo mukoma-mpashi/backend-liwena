@@ -2,7 +2,7 @@
 
 ## Overview
 
-A comprehensive IoT-based cattle monitoring system that tracks behavior, location, and activity patterns of cattle in real-time. The system uses ESP32 devices equipped with MPU6050 accelerometer and GPS modules to collect rich sensor data, which is processed through a FastAPI backend and stored in Firebase Realtime Database.
+A comprehensive IoT-based cattle monitoring system that tracks behavior, location, and movement patterns of cattle in real-time. The system uses ESP32 devices equipped with MPU6050 accelerometer and GPS modules to collect rich sensor data, which is processed through a FastAPI backend and stored in Firebase Realtime Database.
 
 ## 🏗️ System Architecture
 
@@ -73,8 +73,8 @@ graph TD
 - Predator threat detection
 - Unusual behavior alerts
 - Geofence violations
-- Health anomalies
 - System status alerts
+- Location-based alerts
 
 ## 🛠️ Technical Details
 
@@ -233,7 +233,7 @@ settings = {
 - Behavior classification accuracy
 - Battery life estimation
 - GPS fix reliability
-- Alert response time
+- System response time
 
 ## 🔐 Security
 
@@ -248,7 +248,7 @@ settings = {
 
 1. **Machine Learning**
    - Behavior prediction
-   - Health anomaly detection
+   - Movement pattern analysis
    - Grazing pattern optimization
    - Predator threat prediction
 
