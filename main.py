@@ -1,13 +1,23 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
-from firebase_service import firebase_service
+from auth import get_current_user, role_required, firebase_auth
+from firebase_admin import auth
+# from firebase_service import firebase_service  # Commented out due to auth issues
+from temp_firebase_service import temp_firebase_service as firebase_service  # Temporary fix
 from models import (
     CattleBase, CattleCreate, CattleUpdate, CattleResponse,
     StaffBase, StaffCreate, StaffUpdate, StaffResponse,
     AlertBase, AlertCreate, AlertUpdate, AlertResponse,
-    Geofence, GeofenceCreate, CattleLocationUpdate
+    Geofence, GeofenceCreate, CattleLocationUpdate,
+    CattleSensorData
 )
+from pydantic import EmailStr
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    role: str = "user"  # Default role
 from shapely.geometry import Point, Polygon
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -24,6 +34,67 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# =====================
+# AUTHENTICATION ENDPOINTS
+# =====================
+
+# User registration
+@app.post("/auth/register")
+async def register_user(user_data: UserCreate):
+    """Register a new user"""
+    try:
+        # Create user in Firebase Auth
+        user = auth.create_user(
+            email=user_data.email,
+            password=user_data.password
+        )
+        
+        # Set custom claims (role)
+        auth.set_custom_user_claims(user.uid, {"role": user_data.role})
+        
+        # Store additional user data in Realtime DB
+        user_record = {
+            "email": user_data.email,
+            "role": user_data.role,
+            "created_at": datetime.now().isoformat()
+        }
+        
+        result = firebase_service.create_document("users", user.uid, user_record)
+        if not result["success"]:
+            # Rollback: delete the created auth user
+            auth.delete_user(user.uid)
+            raise HTTPException(status_code=500, detail="Failed to create user record")
+        
+        return {"success": True, "uid": user.uid, "message": "User registered successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# Get current user info
+@app.get("/auth/me", dependencies=[Depends(firebase_auth)])
+async def get_current_user_info(current_user: dict = Depends(get_current_user)):
+    """Get current authenticated user information"""
+    return current_user
+
+# Verify Firebase ID token
+@app.get("/auth/verify")
+async def verify_token(decoded_token: dict = Depends(firebase_auth)):
+    """Verify Firebase ID token"""
+    return {"success": True, "user": decoded_token}
+
+# List all users (Admin only)
+@app.get("/auth/users", dependencies=[Depends(firebase_auth)])
+@role_required(["admin"])
+async def list_users(current_user: dict):
+    """List all users - Admin only"""
+    try:
+        result = firebase_service.get_collection("users")
+        if not result["success"]:
+            raise HTTPException(status_code=500, detail="Failed to fetch users")
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # =====================
 # GEOFENCE ENDPOINTS
 # =====================
@@ -54,36 +125,84 @@ async def get_geofences():
 
 @app.post("/cattle-location")
 async def update_cattle_location(update: CattleLocationUpdate):
-    # Store the latest location in DB
-    result = firebase_service.create_document("cattle_locations", update.cattle_id, update.model_dump())
+    """Legacy endpoint for simple location updates"""
+    location_data = {
+        "cattle_id": update.cattle_id,
+        "latitude": update.location[1],
+        "longitude": update.location[0],
+        "timestamp": update.timestamp
+    }
+    path = f"cattle_locations/{update.cattle_id}"
+    result = firebase_service.set_realtime_data(path, location_data)
     if not result["success"]:
-        raise HTTPException(status_code=400, detail=result.get("error", "Failed to update cattle location"))
+        raise HTTPException(status_code=500, detail=result.get("error"))
+    
+    return {"success": True, "message": "Location updated."}
+    
+# =================================================
+# NEW ENDPOINT FOR ESP32 SENSOR DATA
+# =================================================
 
-    # Get all geofences
-    geofences = firebase_service.get_collection("geofences")
-    if not geofences["success"]:
-        raise HTTPException(status_code=400, detail="Failed to fetch geofences")
+@app.post("/cattle/live-data", status_code=200, dependencies=[Depends(firebase_auth)])
+@role_required(["admin", "staff"])
+async def update_cattle_live_data(data: CattleSensorData, current_user: dict):
+    """
+    Receives and processes live sensor data from an ESP32 device for a specific cattle.
+    This is the primary endpoint for hardware integration.
+    """
+    cattle_id = data.cattle_id
+    
+    # 1. Store the complete raw sensor data in a new 'cattle_live_data' collection
+    live_data_path = f"cattle_live_data/{cattle_id}"
+    result_live = firebase_service.set_realtime_data(live_data_path, data.model_dump())
+    
+    if not result_live["success"]:
+        # This is a critical failure, as we are losing raw data.
+        raise HTTPException(status_code=500, detail=f"Failed to store live sensor data: {result_live.get('error')}")
 
-    point = Point(update.location)
-    inside_any = False
-    for fence in geofences["data"]:
-        poly = Polygon(fence["coordinates"])
-        if poly.contains(point):
-            inside_any = True
-            break
+    # 2. Update the main 'cattle' document with the latest summary
+    update_data = {
+        "last_seen": data.timestamp,
+        "location": f"{data.latitude},{data.longitude}",
+        "status": data.behavior.current,
+        "position": {"x": data.longitude, "y": data.latitude},
+        "lastMovement": data.timestamp if data.is_moving else "Stationary"
+    }
+    result_update = firebase_service.update_document("cattle", cattle_id, update_data)
+    
+    if not result_update["success"]:
+        # Log this error but don't block the response to the ESP32.
+        # The raw data was saved, which is most important.
+        print(f"Warning: Failed to update main cattle document for {cattle_id}: {result_update.get('error')}")
 
-    if not inside_any:
-        # Create geofence alert
-        alert = {
-            "id": f"alert_{uuid.uuid4().hex[:8]}",
-            "cattleId": update.cattle_id,
-            "type": "Geofence",
-            "message": "Cattle left geofence",
-            "timestamp": update.timestamp
-        }
-        firebase_service.create_document("alerts", alert["id"], alert)
+    # 3. Perform geofence check using the new location data
+    location_point = Point(data.longitude, data.latitude)
+    geofences_result = firebase_service.get_collection("geofences")
+    
+    if geofences_result.get("success") and geofences_result.get("data"):
+        geofences = geofences_result["data"]
+        for geofence_data in geofences:
+            if isinstance(geofence_data, dict) and 'coordinates' in geofence_data and geofence_data['coordinates']:
+                try:
+                    geofence_poly = Polygon(geofence_data["coordinates"])
+                    if not geofence_poly.contains(location_point):
+                        # Cattle is outside the geofence, create an alert
+                        alert_message = f"Alert: Cattle {cattle_id} detected outside of geofence '{geofence_data.get('name', geofence_data.get('id'))}'."
+                        alert_data = {
+                            "cattleId": cattle_id,
+                            "type": "geofence_breach",
+                            "message": alert_message,
+                            "timestamp": datetime.now().isoformat(),
+                            "location": {"latitude": data.latitude, "longitude": data.longitude}
+                        }
+                        alert_id = f"alert_{uuid.uuid4().hex[:10]}"
+                        firebase_service.create_document("alerts", alert_id, alert_data)
+                        print(f"ALERT CREATED: {alert_message}")
+                except Exception as e:
+                    print(f"Error processing geofence {geofence_data.get('id')}: {e}")
 
-    return {"success": True, "inside_geofence": inside_any}
+    return {"success": True, "message": f"Live data for {cattle_id} processed."}
+
 
 # General models for backward compatibility
 class DocumentData(BaseModel):
@@ -100,8 +219,9 @@ def read_root():
     return {"message": "Cattle Monitor API is running!", "status": "healthy", "version": "1.0.0"}
 
 # CATTLE ENDPOINTS
-@app.post("/cattle", response_model=CattleResponse)
-async def create_cattle(cattle_data: CattleCreate):
+@app.post("/cattle", response_model=CattleResponse, dependencies=[Depends(firebase_auth)])
+@role_required(["admin"])
+async def create_cattle(cattle_data: CattleCreate, current_user: dict):
     """Create a new cattle record"""
     cattle_id = f"cattle_{uuid.uuid4().hex[:8]}"
     cattle_dict = cattle_data.model_dump()
@@ -310,7 +430,10 @@ async def get_alerts_by_type(alert_type: str):
     filtered_alerts = [alert for alert in result["data"] if alert.get("type") == alert_type]
     return {"success": True, "data": filtered_alerts}
 
+# =====================
 # UTILITY ENDPOINTS
+# =====================
+
 @app.get("/dashboard/summary")
 async def get_dashboard_summary():
     """Get summary data for dashboard"""
@@ -367,7 +490,10 @@ async def get_dashboard_summary():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate dashboard summary: {str(e)}")
 
+# =====================
 # ORIGINAL GENERIC ENDPOINTS (for backward compatibility)
+# =====================
+
 @app.post("/firestore/{collection_name}/{document_id}", response_model=DocumentResponse)
 async def create_document(collection_name: str, document_id: str, document_data: DocumentData):
     """Create a new document in Firestore"""
@@ -410,7 +536,10 @@ async def get_collection(collection_name: str):
         raise HTTPException(status_code=400, detail=result.get("error", "Failed to get collection"))
     return result
 
+# =====================
 # REALTIME DATABASE ENDPOINTS (Direct path access)
+# =====================
+
 @app.post("/realtime/{path:path}", response_model=DocumentResponse)
 async def set_realtime_data(path: str, document_data: DocumentData):
     """Set data in Firebase Realtime Database"""
@@ -499,11 +628,12 @@ async def debug_data():
 @app.get("/cattle-locations")
 async def get_all_cattle_locations():
     """Get all cattle locations"""
-    result = firebase_service.get_collection("cattle_locations")
+    result = firebase_service.get_collection("cattle_live_data")
     if not result["success"]:
-        raise HTTPException(status_code=400, detail=result.get("error", "Failed to get cattle locations"))
+        raise HTTPException(status_code=500, detail=result.get("error", "Failed to fetch cattle locations."))
     return result
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

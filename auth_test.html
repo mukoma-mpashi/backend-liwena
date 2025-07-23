@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firebase Auth Test</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .container { background: #f5f5f5; padding: 20px; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .token-display { 
+            background: #fff; 
+            padding: 10px; 
+            margin: 10px 0; 
+            border: 1px solid #ddd;
+            word-wrap: break-word;
+        }
+        .user-info {
+            background: #e8f5e9;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Firebase Authentication Test</h1>
+        
+        <div id="auth-status">Not logged in</div>
+        
+        <h2>Login</h2>
+        <div>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+        </div>
+
+        <div id="user-info" style="display: none" class="user-info">
+            <h3>Current User</h3>
+            <pre id="user-details"></pre>
+        </div>
+
+        <div id="token-section" style="display: none">
+            <h3>ID Token</h3>
+            <div class="token-display" id="token"></div>
+            <button onclick="copyToken()">Copy Token</button>
+            <button onclick="refreshToken()">Refresh Token</button>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <script>
+        // Your Firebase configuration
+        const firebaseConfig = {
+            // TODO: Replace with your Firebase config
+            apiKey: "your-api-key",
+            authDomain: "your-auth-domain",
+            projectId: "your-project-id",
+            storageBucket: "your-storage-bucket",
+            messagingSenderId: "your-messaging-sender-id",
+            appId: "your-app-id"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Auth status observer
+        firebase.auth().onAuthStateChanged((user) => {
+            const authStatus = document.getElementById('auth-status');
+            const tokenSection = document.getElementById('token-section');
+            const userInfo = document.getElementById('user-info');
+            
+            if (user) {
+                authStatus.textContent = `Logged in as: ${user.email}`;
+                tokenSection.style.display = 'block';
+                userInfo.style.display = 'block';
+                updateToken();
+                updateUserInfo();
+            } else {
+                authStatus.textContent = 'Not logged in';
+                tokenSection.style.display = 'none';
+                userInfo.style.display = 'none';
+                document.getElementById('token').textContent = '';
+            }
+        });
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                await firebase.auth().signInWithEmailAndPassword(email, password);
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function updateToken() {
+            const user = firebase.auth().currentUser;
+            if (user) {
+                const token = await user.getIdToken(true);
+                document.getElementById('token').textContent = token;
+            }
+        }
+
+        async function updateUserInfo() {
+            const user = firebase.auth().currentUser;
+            if (user) {
+                const token = await user.getIdToken(true);
+                const decodedToken = JSON.parse(atob(token.split('.')[1]));
+                document.getElementById('user-details').textContent = 
+                    JSON.stringify({
+                        uid: user.uid,
+                        email: user.email,
+                        role: decodedToken.role || 'user'
+                    }, null, 2);
+            }
+        }
+
+        async function refreshToken() {
+            await updateToken();
+        }
+
+        async function copyToken() {
+            const token = document.getElementById('token').textContent;
+            await navigator.clipboard.writeText(token);
+            alert('Token copied to clipboard!');
+        }
+
+        async function logout() {
+            try {
+                await firebase.auth().signOut();
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

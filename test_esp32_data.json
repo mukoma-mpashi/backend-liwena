@@ -1,0 +1,27 @@
+{
+  "cattle_id": "test_esp32_cattle",
+  "timestamp": "2025-07-19T12:20:00Z",
+  "latitude": -1.2921,
+  "longitude": 36.8219,
+  "gps_fix": true,
+  "speed_kmh": 2.5,
+  "heading": 45.0,
+  "is_moving": true,
+  "acceleration": {
+    "x": 0.1,
+    "y": -0.3,
+    "z": 9.9
+  },
+  "behavior": {
+    "current": "grazing",
+    "previous": "walking",
+    "duration_seconds": 300,
+    "confidence": 85.0
+  },
+  "activity": {
+    "total_active_time_seconds": 14400,
+    "total_rest_time_seconds": 72000,
+    "daily_steps": 7500,
+    "daily_distance_km": 4.2
+  }
+}

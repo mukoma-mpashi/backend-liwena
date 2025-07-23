@@ -58,6 +58,52 @@ class AlertBase(BaseModel):
     message: str
     timestamp: str
 
+# =================================================
+# NEW MODELS FOR ESP32 SENSOR DATA
+# =================================================
+
+class Acceleration(BaseModel):
+    x: float
+    y: float
+    z: float
+
+class Behavior(BaseModel):
+    current: str
+    previous: str
+    duration_seconds: int
+    confidence: float
+
+class ActivityMetrics(BaseModel):
+    total_active_time_seconds: int
+    total_rest_time_seconds: int
+    daily_steps: int
+    daily_distance_km: float
+
+class CattleSensorData(BaseModel):
+    """
+    Represents the full data payload from the ESP32 sensor.
+    """
+    cattle_id: str
+    timestamp: str
+    latitude: float
+    longitude: float
+    gps_fix: bool
+    speed_kmh: float
+    heading: float
+    is_moving: bool
+    acceleration: Acceleration
+    behavior: Behavior
+    activity: ActivityMetrics
+
+class CattleLiveData(CattleSensorData):
+    """
+    Represents the data stored in Firebase for a cattle's live state.
+    Includes an ID field.
+    """
+    id: str
+
+# =================================================
+
 # Geofence models
 from typing import List
 class Geofence(BaseModel):
