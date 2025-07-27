@@ -57,10 +57,17 @@ graph TD
 
 ### 2. Activity Tracking
 - Daily activity metrics
+<<<<<<< HEAD
 - Distance calculation
 - Rest/active period monitoring
 - Movement patterns
 - Activity duration
+=======
+- Step counting
+- Distance calculation
+- Rest/active period monitoring
+- Movement patterns
+>>>>>>> 2c5db890a9cd94e0fcc2216b70b50ebeb05f5a2e
 
 ### 3. Location Services
 - Real-time GPS tracking
@@ -123,6 +130,10 @@ graph TD
     "activity": {
         "total_active_time_seconds": 3600,
         "total_rest_time_seconds": 1800,
+<<<<<<< HEAD
+=======
+        "daily_steps": 1250,
+>>>>>>> 2c5db890a9cd94e0fcc2216b70b50ebeb05f5a2e
         "daily_distance_km": 2.5
     }
 }
