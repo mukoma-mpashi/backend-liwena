@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
-from auth import get_current_user, role_required, firebase_auth
+from routers.auth import get_current_user, role_required, firebase_auth
 from firebase_admin import auth
 # from firebase_service import firebase_service  # Commented out due to auth issues
 from temp_firebase_service import temp_firebase_service as firebase_service  # Temporary fix
