@@ -134,3 +134,6 @@ temp_firebase_service = TemporaryFirebaseService()
 print("✅ Temporary Firebase HTTP service initialized")
 print("🔧 This bypasses authentication issues for immediate testing")
 print("📝 Remember to fix the service account key for production use")
+
+# Export for imports
+__all__ = ['temp_firebase_service', 'TemporaryFirebaseService']

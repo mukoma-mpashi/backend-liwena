@@ -23,7 +23,6 @@ app.include_router(alerts.router)
 app.include_router(geofence.router)
 app.include_router(cattle.router)
 app.include_router(dashboard.router)
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
 
 @app.get("/")
 def read_root():
