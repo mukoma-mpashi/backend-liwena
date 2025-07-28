@@ -6,3 +6,4 @@ gunicorn==21.2.0
 requests==2.31.0
 shapely==2.0.1
 numpy>=1.21.0,<2.0.0
+email-validator==2.1.0
