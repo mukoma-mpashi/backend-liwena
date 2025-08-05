@@ -55,54 +55,30 @@ async def update_cattle_live_data(data: CattleSensorData):
         else:
             print(f"✅ Cattle document updated successfully")
 
-        # 3. 🔥 GEOFENCING LOGIC 🔥
+        # 3. 🔥 ENHANCED GEOFENCING LOGIC 🔥
         print(f"🗺️ Checking geofences for cattle {cattle_id}...")
-        geofence_alerts = []
+        
+        # Use the enhanced geofence checking logic from geofence router
+        from routers.geofence import check_cattle_geofence_status
         
         try:
-            location_point = Point(data.longitude, data.latitude)
-            geofences_result = firebase_service.get_collection("geofences")
+            geofence_result = check_cattle_geofence_status(cattle_id, data.latitude, data.longitude)
             
-            if geofences_result.get("success") and geofences_result.get("data"):
-                geofences = geofences_result["data"]
-                print(f"📊 Found {len(geofences)} geofences to check")
+            if geofence_result.get("success"):
+                geofence_alerts = geofence_result.get("alerts", [])
+                breach_count = geofence_result.get("total_breaches", 0)
                 
-                for geofence_data in geofences:
-                    if isinstance(geofence_data, dict) and 'coordinates' in geofence_data and geofence_data['coordinates']:
-                        try:
-                            geofence_name = geofence_data.get('name', geofence_data.get('id', 'Unknown'))
-                            geofence_poly = Polygon(geofence_data["coordinates"])
-                            
-                            is_inside = geofence_poly.contains(location_point)
-                            print(f"🎯 Geofence '{geofence_name}': {'✅ INSIDE' if is_inside else '❌ OUTSIDE'}")
-                            
-                            if not is_inside:
-                                # Cattle is outside the geofence, create an alert
-                                alert_message = f"🚨 GEOFENCE BREACH: Cattle {cattle_id} detected outside of geofence '{geofence_name}'"
-                                alert_data = {
-                                    "cattleId": cattle_id,
-                                    "type": "geofence_breach",
-                                    "message": alert_message,
-                                    "timestamp": datetime.now().isoformat(),
-                                    "location": {"latitude": data.latitude, "longitude": data.longitude},
-                                    "geofence_name": geofence_name
-                                }
-                                alert_id = f"alert_{uuid.uuid4().hex[:10]}"
-                                alert_result = firebase_service.create_document("alerts", alert_id, alert_data)
-                                
-                                if alert_result["success"]:
-                                    print(f"🚨 ALERT CREATED: {alert_message}")
-                                    geofence_alerts.append(alert_message)
-                                else:
-                                    print(f"❌ Failed to create alert: {alert_result.get('error')}")
-                                    
-                        except Exception as e:
-                            print(f"❌ Error processing geofence {geofence_data.get('id')}: {e}")
+                if breach_count > 0:
+                    print(f"🚨 GEOFENCE BREACHES DETECTED: {breach_count} breaches for cattle {cattle_id}")
+                else:
+                    print(f"✅ Cattle {cattle_id} is within all geofences")
             else:
-                print("📭 No geofences found or geofence query failed")
+                print(f"⚠️ Geofence check failed: {geofence_result.get('error')}")
+                geofence_alerts = []
                 
         except Exception as e:
-            print(f"❌ Error in geofence processing: {str(e)}")
+            print(f"❌ Error in enhanced geofence processing: {str(e)}")
+            geofence_alerts = []
 
         # Prepare response with geofence status
         response_message = f"Live data for {cattle_id} processed successfully."
@@ -163,6 +139,72 @@ async def get_all_cattle_live_data():
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get live data: {str(e)}")
+
+@router.get("/geofence-status/{cattle_id}")
+async def get_cattle_geofence_breach_status(cattle_id: str):
+    """
+    Quick endpoint for frontend to check if a cattle has breached any geofences.
+    Returns simple boolean status for easy frontend integration.
+    """
+    try:
+        # Get latest cattle location
+        result = firebase_service.get_realtime_data(f"cattle_live_data/{cattle_id}")
+        if not result["success"]:
+            return {
+                "success": False,
+                "cattle_id": cattle_id,
+                "has_breach": False,
+                "error": f"No live data found for cattle {cattle_id}"
+            }
+        
+        cattle_data = result.get("data", {})
+        latitude = cattle_data.get("latitude")
+        longitude = cattle_data.get("longitude")
+        
+        if latitude is None or longitude is None:
+            return {
+                "success": False,
+                "cattle_id": cattle_id,
+                "has_breach": False,
+                "error": "No location data available"
+            }
+        
+        # Use enhanced geofence checking
+        from routers.geofence import check_cattle_geofence_status
+        geofence_result = check_cattle_geofence_status(cattle_id, latitude, longitude)
+        
+        if not geofence_result.get("success"):
+            return {
+                "success": False,
+                "cattle_id": cattle_id,
+                "has_breach": False,
+                "error": geofence_result.get("error", "Geofence check failed")
+            }
+        
+        has_breach = len(geofence_result.get("outside_geofences", [])) > 0
+        breach_details = geofence_result.get("outside_geofences", [])
+        
+        return {
+            "success": True,
+            "cattle_id": cattle_id,
+            "has_breach": has_breach,
+            "breach_count": len(breach_details),
+            "timestamp": cattle_data.get("timestamp"),
+            "location": {
+                "latitude": latitude,
+                "longitude": longitude
+            },
+            "breach_details": breach_details,
+            "behavior": cattle_data.get("behavior", {}).get("current", "unknown")
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "cattle_id": cattle_id,
+            "has_breach": False,
+            "error": f"Error checking geofence status: {str(e)}"
+        }
 
 @router.get("/locations")
 async def get_all_cattle_locations():

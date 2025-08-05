@@ -20,7 +20,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(staff.router)
 app.include_router(alerts.router)
-app.include_router(geofence.router)
+app.include_router(geofence.router, prefix="/geofence")
 app.include_router(cattle.router)
 app.include_router(dashboard.router)
 
