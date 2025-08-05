@@ -81,7 +81,7 @@ class ActivityMetrics(BaseModel):
 
 class CattleSensorData(BaseModel):
     """
-    Represents the full data payload from the ESP32 sensor.
+    Represents the full data payload from IoT sensors (ESP32/ESP8266).
     """
     cattle_id: str
     timestamp: str

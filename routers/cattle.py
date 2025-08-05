@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body
 from temp_firebase_service import temp_firebase_service as firebase_service
 from models import CattleSensorData
 from shapely.geometry import Point, Polygon
 from datetime import datetime
 import uuid
+import math
+from routers.behaviorAnalysis import analyze_behavior_and_generate_alerts
 
 router = APIRouter(prefix="/cattle", tags=["cattle"])
 
@@ -14,18 +16,18 @@ router = APIRouter(prefix="/cattle", tags=["cattle"])
 @router.post("/live-data", status_code=200)
 async def update_cattle_live_data(data: CattleSensorData):
     """
-    Receives and processes live sensor data from an ESP32 device for a specific cattle.
+    Receives and processes live sensor data from ESP32/ESP8266 devices for cattle.
     This is the primary endpoint for hardware integration.
-    Note: Authentication removed for ESP32 compatibility.
+    Note: Authentication removed for ESP32/ESP8266 compatibility.
     """
     cattle_id = data.cattle_id
     
-    print(f"📡 Received data from ESP32 for cattle: {cattle_id}")
+    print(f"📡 Received data from IoT device for cattle: {cattle_id}")
     print(f"📍 Location: {data.latitude}, {data.longitude}")
     print(f"🐄 Behavior: {data.behavior.current}")
     print(f"🚶 Moving: {data.is_moving}")
     
-    # 1. Store the complete raw sensor data in a new 'cattle_live_data' collection
+    # 1. Store the complete raw sensor data in 'cattle_live_data' collection
     live_data_path = f"cattle_live_data/{cattle_id}"
     result_live = firebase_service.set_realtime_data(live_data_path, data.model_dump())
     
@@ -96,14 +98,18 @@ async def update_cattle_live_data(data: CattleSensorData):
     response_message = f"Live data for {cattle_id} processed successfully."
     if geofence_alerts:
         response_message += f" Generated {len(geofence_alerts)} geofence alerts."
-    
+
+    # --- Behavior-based alert analysis ---
+    alerts = analyze_behavior_and_generate_alerts(cattle_id, data.model_dump())
+
     return {
         "success": True, 
         "message": response_message,
         "cattle_id": cattle_id,
         "location": {"latitude": data.latitude, "longitude": data.longitude},
         "behavior": data.behavior.current,
-        "geofence_alerts": geofence_alerts
+        "geofence_alerts": geofence_alerts,
+        "behavior_alerts": alerts
     }
 
 @router.get("/live-data/{cattle_id}")
